@@ -1,0 +1,28 @@
+# Local configuration with secrets (never commit API keys)
+.env
+
+# Python environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local generated data (per-machine demo artifacts)
+prospect_cache.json
+*.csv
+
+# OS files
+.DS_Store
+Thumbs.db
