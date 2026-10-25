@@ -26,8 +26,8 @@ INDUSTRY_CATEGORIES = {
         "pharmacy", "appointment", "patient", "book",
     ],
     "legal": [
-        "law", "attorney", "lawyer", "legal", "firm", "litigation", "lawyer",
-        "consultant", "paralegal", "court", "claims", "personal injury",
+        "law", "attorney", "legal", "firm", "litigation", "consultant",
+        "paralegal", "court", "claims", "personal injury",
         "immigration", "family law", "criminal", "civil", "notary",
         "appointment", "consultation",
     ],
@@ -44,7 +44,7 @@ INDUSTRY_CATEGORIES = {
         "appointment", "book",
     ],
     "hospitality": [
-        "hotel", "hotel", "restaurant", "catering", "cafe", "cafe",
+        "hotel", "restaurant", "catering", "cafe",
         "resort", "bar", "pub", "hospitality", "travel", "tourism",
         "booking", "reservation", "hostel", "guest house", "vacation",
         "stay", "event", "venue", "conference",
@@ -73,7 +73,7 @@ INDUSTRY_CATEGORIES = {
         "loan", "pension", "retirement", "super",
     ],
     "technology": [
-        "software", "saas", "saas", "it", "technology", "tech", "digital",
+        "software", "saas", "it", "technology", "tech", "digital",
         "app", "developer", "programming", "api", "cloud", "data",
         "analytics", "cybersecurity", "automation", "ai", "artificial",
         "intelligence", "consulting", "services",
@@ -109,7 +109,7 @@ COMPLEXITY_KEYWORDS = [
     "custom", "customised", "customized", "tailored", "bespoke",
     "multiple", "multi", "bulk", "enterprise", "corporate",
     "complex", "complicated", "configuration", "specification",
-    "estimate", "estimate", "proposal", "bespoke", "package", "bundled",
+    "estimate", "proposal", "package", "bundled",
 ]
 
 # Keywords that signal booking / appointment / lead-qualification features

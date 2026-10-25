@@ -4,3 +4,9 @@ requests>=2.31.0
 beautifulsoup4>=4.12.0
 python-dotenv>=1.0.0
 groq>=0.4.0
+# New dependencies for the upgrade:
+# - Google AI (Gemini fallback)
+# - SQLite is built-in (Python 3.12+)
+# - dnspatterns for MX/SMTP verification
+dnspython>=2.5.0
+google-generativeai>=0.3.0
