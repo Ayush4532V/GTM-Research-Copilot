@@ -174,6 +174,12 @@ FIT_SCORE_THRESHOLD = 70
 MAX_ACTIONS_PER_RUN = 25
 DISCOVERY_QUERIES_PER_RUN = 25
 
+# Auto-send flag: false = create Gmail drafts only, true = actually send.
+AUTO_SEND = False
+
+# Database path (SQLite)
+DB_PATH = "leads.db"
+
 # Exported aliases so scoring.py can read keyword lists directly from config
 # without changing how callers use the module.
 INDUSTRY_CATEGORIES = target_industries
