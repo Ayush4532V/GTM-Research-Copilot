@@ -22,6 +22,10 @@ ENV/
 # Local generated data (per-machine demo artifacts)
 prospect_cache.json
 *.csv
+leads.db
+*.db
+*.db-wal
+*.db-shm
 
 # OS files
 .DS_Store
