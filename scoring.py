@@ -1,145 +1,18 @@
 """
-scoring.py — rule-based ICP scoring engine.
+scoring.py — Rule-based ICP scoring engine.
 
-This module scores prospects using transparent, keyword-driven rules. It is
-intentionally offline: no network calls and no LLM calls are made here.
+Reads the target profile from config.py (so ICP changes are declarative,
+not code edits). All matching logic for each criterion is rule-based and
+offline: no network calls or LLM calls here.
 
-Each scoring criterion returns:
+Each criterion returns:
     - score: integer points earned by this criterion
     - explanation: a human-readable reason for the score
     - evidence: a list of observed facts supporting the score
     - evidence_status: one of "observed", "inferred", or "missing"
 """
 
-# ---------------------------------------------------------------------------
-# Industry and keyword rules
-# ---------------------------------------------------------------------------
-
-# Supported industries and the keywords/phrases that signal strong fit for
-# Hyperleap AI (an AI front-desk / lead-qualification automation provider).
-INDUSTRY_CATEGORIES = {
-    "healthcare": [
-        "clinic", "doctor", "dentist", "dental", "hospital", "medical",
-        "physiotherapy", "physio", "chiropractor", "wellness", "therapy",
-        "healthcare", "telehealth", "mental health", "counseling", "psychology",
-        "optometrist", "optometry", "veterinary", "vet", "lab", "laboratory",
-        "pharmacy", "appointment", "patient", "book",
-    ],
-    "legal": [
-        "law", "attorney", "legal", "firm", "litigation", "consultant",
-        "paralegal", "court", "claims", "personal injury",
-        "immigration", "family law", "criminal", "civil", "notary",
-        "appointment", "consultation",
-    ],
-    "real_estate": [
-        "real estate", "realtor", "property", "agent", "brokerage",
-        "commercial", "residential", "mortgage", "apartment", "rental",
-        "leasing", "development", "construction", "home", "estate agency",
-        "book", "viewing", "appointment",
-    ],
-    "automotive": [
-        "car", "auto", "automotive", "dealer", "repair", "mechanic",
-        "service center", "body shop", "tyre", "tire", "oil change",
-        "diesel", "bus", "fleet", "rental", "motorcycle", "parts",
-        "appointment", "book",
-    ],
-    "hospitality": [
-        "hotel", "restaurant", "catering", "cafe",
-        "resort", "bar", "pub", "hospitality", "travel", "tourism",
-        "booking", "reservation", "hostel", "guest house", "vacation",
-        "stay", "event", "venue", "conference",
-    ],
-    "fitness": [
-        "gym", "fitness", "yoga", "pilates", "crossfit", "workout",
-        "trainer", "nutrition", "diet", "weight loss", "spa", "massage",
-        "wellness", "class", "studio", "training",
-    ],
-    "education": [
-        "school", "university", "college", "academy", "tutor", "training",
-        "course", "institute", "educational", "learning", "coaching",
-        "kindergarten", "primary school", "secondary school", "language",
-        "enrollment", "student",
-    ],
-    "home_services": [
-        "plumbing", "electrician", "hvac", "heating", "air conditioning",
-        "cleaning", "cleaner", "pest control", "landscaping", "garden",
-        "removalists", "movers", "painting", "roofer", "carpenter",
-        "handyman", "locksmith", "appliance repair", "installation",
-    ],
-    "financial": [
-        "accounting", "accountant", "bookkeeping", "tax", "finance",
-        "insurance", "broker", "invest", "investment", "wealth",
-        "advisory", "adviser", "advisor", "bank", "credit", "mortgage",
-        "loan", "pension", "retirement", "super",
-    ],
-    "technology": [
-        "software", "saas", "it", "technology", "tech", "digital",
-        "app", "developer", "programming", "api", "cloud", "data",
-        "analytics", "cybersecurity", "automation", "ai", "artificial",
-        "intelligence", "consulting", "services",
-    ],
-    "retail": [
-        "shop", "store", "retail", "boutique", "e-commerce", "ecommerce",
-        "online store", "merchandise", "wholesale", "distribution",
-        "subscription", "clothing", "fashion", "beauty", "cosmetics",
-        "gift", "jewellery", "jewelry", "accessories",
-    ],
-    "manufacturing": [
-        "manufacturing", "manufacturer", "factory", "production", "industrial",
-        "supply", "logistics", "warehouse", "machinery", "equipment",
-        "fabrication", "assembly", "parts", "components",
-    ],
-    "nonprofit": [
-        "nonprofit", "non-profit", "charity", "foundation", "ngo",
-        "community", "volunteer", "fundraising", "donation", "cause",
-        "association", "membership",
-    ],
-    "professional_services": [
-        "consulting", "consultant", "agency", "marketing", "advertising",
-        "design", "graphic design", "branding", "pr", "public relations",
-        "hr", "human resources", "recruitment", "relocation",
-        "facilities", "event management", "catering",
-    ],
-    "other": [],
-}
-
-# Keywords that signal more complex, multi-part enquiries worth more points.
-COMPLEXITY_KEYWORDS = [
-    "quote", "quotation", "get a quote", "free quote", "request a quote",
-    "custom", "customised", "customized", "tailored", "bespoke",
-    "multiple", "multi", "bulk", "enterprise", "corporate",
-    "complex", "complicated", "configuration", "specification",
-    "estimate", "proposal", "package", "bundled",
-]
-
-# Keywords that signal booking / appointment / lead-qualification features
-# already present (these show a structured enquiry flow).
-BOOKING_KEYWORDS = [
-    "book online", "book now", "booking", "book an appointment",
-    "schedule", "appointment", "reserve", "enquire", "enquiry", "contact us",
-    "request a callback", "callback", "free consultation", "chat with us",
-    "live chat", "chatbot", "faq", "frequently asked questions",
-    "form", "contact form", "apply", "register", "signup", "sign up",
-    "quote request", "lead", "inquiry", "inquiry form",
-]
-
-# Keywords that signal a clear automation opportunity: bespoke quotes,
-# multi-step enquiries, scheduling, or high volume of repetitive questions.
-AUTOMATION_KEYWORDS = [
-    "appointment booking", "online booking", "self-service", "24/7",
-    "round the clock", "open 24 hours", "instant", "same day", "quick quote",
-    "automated", "schedule", "calendar", "availability", "slot", "timeslot",
-    "booking engine", "booking system", "reservation system", "self booking",
-]
-
-# Phrases that explicitly invite a quote or enquiry — a strong signal of
-# inbound lead flow.
-QUOTE_INVITE_PHRASES = [
-    "get a quote", "request a quote", "request quote", "quote request",
-    "enquire now", "enquire today", "contact us", "contact us today",
-    "book now", "book today", "book an appointment", "free consultation",
-    "chat to us", "chat with us", "speak to us", "get in touch",
-]
+from config import INDUSTRY_CATEGORIES, COMPLEXITY_KEYWORDS, BOOKING_KEYWORDS, AUTOMATION_KEYWORDS, QUOTE_INVITE_PHRASES, ideal_signals, disqualifiers
 
 
 # ---------------------------------------------------------------------------
@@ -161,9 +34,9 @@ def _keyword_matches(text, keywords):
 
 def _extract_first_n_sentences(text, n=4, max_chars=400):
     """Return the first n sentences up to max_chars, for display."""
+    import re
     if not text:
         return ""
-    import re
     sentences = re.split(r"(?<=[.!?])\s+", str(text))
     out = []
     chars = 0
@@ -186,6 +59,8 @@ def score_industry_fit(selected_industry, evidence_text, website_text):
     Scores how well the selected industry matches the business's actual
     content, and how typical its service pattern is for Hyperleap AI's
     target market (service businesses with structured enquiries).
+
+    The industry keyword list is read from config.py's INDUSTRY_CATEGORIES.
     """
     points = 0
     reasons = []
@@ -251,6 +126,8 @@ def score_enquiry_complexity(evidence_text, website_text):
 
     Businesses with multi-step, custom, or quote-based enquiries benefit
     more from structured AI front-desk automation.
+
+    Keywords come from config.py COMPLEXITY_KEYWORDS.
     """
     points = 0
     reasons = []
@@ -303,6 +180,8 @@ def score_booking_fit(evidence_text, website_text):
 
     Signals that the business already handles enquiries through booking
     flows, forms, or qualification steps.
+
+    Booking keywords and explicit booking signals come from config.py.
     """
     points = 0
     reasons = []
@@ -364,6 +243,8 @@ def score_automation_opportunity(evidence_text, website_text):
 
     Estimates where an AI front-desk could realistically help, based on
     observable signals only. Does not claim actual lead volumes.
+
+    Automation keywords come from config.py AUTOMATION_KEYWORDS.
     """
     points = 0
     reasons = []
