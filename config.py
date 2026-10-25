@@ -170,6 +170,10 @@ value_proposition = "Our AI front-desk qualifies leads and schedules appointment
 
 FIT_SCORE_THRESHOLD = 70
 
+# Pipeline limits — read from environment or use defaults.
+MAX_ACTIONS_PER_RUN = 25
+DISCOVERY_QUERIES_PER_RUN = 25
+
 # Exported aliases so scoring.py can read keyword lists directly from config
 # without changing how callers use the module.
 INDUSTRY_CATEGORIES = target_industries

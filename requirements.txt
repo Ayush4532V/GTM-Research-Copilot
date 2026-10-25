@@ -10,3 +10,4 @@ groq>=0.4.0
 # - dnspatterns for MX/SMTP verification
 dnspython>=2.5.0
 google-generativeai>=0.3.0
+ddgs>=0.8.0
