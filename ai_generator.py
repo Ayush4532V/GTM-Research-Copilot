@@ -158,6 +158,172 @@ BE FACTUAL, CONCISE, AND ACTIONABLE FOR A GTM PROFESSIONAL.
         return f"[Groq API failed: {error_msg}]\n\n{fallback}"
 
 
+def generate_fit_score(
+    business_name: str,
+    industry: str,
+    website_title: str,
+    website_description: str,
+    extracted_text: str,
+    icp_scores: dict,
+    icp_total: int,
+    icp_category: str,
+) -> dict:
+    """
+    Generate an LLM-based fit score (0-100) for a prospect.
+
+    Sends scraped context + ICP score to Groq (primary) or Gemini (fallback),
+    and returns a structured result with score, rationale, and observed signals.
+
+    Returns
+    -------
+    dict with keys:
+        - score: int (0-100) — LLM's fit assessment
+        - rationale: str — 2-3 line explanation
+        - observed_signals: list[str] — specific signals from the page
+        - source: str — "groq" or "gemini" or "fallback"
+        - success: bool
+    """
+    import logging
+    logger = logging.getLogger("gtm.ai")
+
+    # Truncate text for the prompt
+    max_text = 2000
+    truncated = (
+        extracted_text[:max_text] + "..."
+        if len(extracted_text) > max_text else extracted_text
+    )
+
+    # Build evidence summary from scoring criteria
+    evidence_lines = []
+    for criterion, details in icp_scores.items():
+        score = details[0]
+        explanation = details[1]
+        evidence_lines.append(
+            f"- {criterion.replace('_', ' ').title()}: {score} points. {explanation}"
+        )
+
+    # Build target profile context
+    from config import target_industries, ideal_signals
+    industry_keywords = target_industries.get(industry, [])[:10]
+    ideal_keyword_str = "; ".join(
+        f"{k}: {', '.join(v[:3])}" for k, v in list(ideal_signals.items())[:3]
+    )
+
+    prompt = f"""You are evaluating a B2B prospect for Hyperleap AI, an AI front-desk that qualifies leads and schedules appointments 24/7 for service businesses.
+
+BUSINESS: {business_name}
+INDUSTRY: {industry} ({', '.join(industry_keywords)})
+WEBSITE TITLE: {website_title}
+META DESCRIPTION: {website_description}
+PAGE TEXT (truncated): {truncated}
+RULE-BASED ICP SCORE: {icp_total}/100 ({icp_category})
+ICP BREAKDOWN: {' | '.join(evidence_lines)}
+
+TARGET PROFILE signals we look for: {ideal_keyword_str}
+
+Rate this business 0-100 for how well it fits the profile of a company that would benefit from an AI front-desk (handles inbound enquiries, bookings, or lead qualification).
+
+ONLY use information you can see in the website text. Do NOT invent facts, revenue, employee counts, or lead volumes. If the website text is empty or generic, give a neutral score (40-60).
+
+Return your answer as a JSON object with exactly these fields:
+- "score": integer 0-100
+- "rationale": 2-3 sentence explanation
+- "observed_signals": list of 0-5 specific phrases/quotes from the page text that support the score
+"""
+
+    # Try primary provider (Groq)
+    provider = os.getenv("PRIMARY_AI_PROVIDER", "groq")
+    primary_key = (
+        os.getenv("GROQ_API_KEY")
+        if provider == "groq"
+        else os.getenv("GEMINI_API_KEY")
+    )
+
+    # Fallback provider
+    fallback_provider = "gemini" if provider == "groq" else "groq"
+    fallback_key = (
+        os.getenv("GEMINI_API_KEY")
+        if fallback_provider == "gemini"
+        else os.getenv("GROQ_API_KEY")
+    )
+
+    def _call_llm(key, model, provider_name):
+        """Call the appropriate LLM provider and return parsed JSON."""
+        import json
+
+        if provider_name == "groq":
+            from groq import Groq
+            client = Groq(api_key=key)
+            resp = client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=model or "llama-3.3-70b-versatile",
+                temperature=0.1,
+                max_tokens=500,
+            )
+            raw = resp.choices[0].message.content.strip()
+        else:  # gemini
+            import google.generativeai as genai
+            genai.configure(api_key=key)
+            model_obj = genai.GenerativeModel(
+                model or "gemini-1.5-flash",
+                generation_config={"temperature": 0.1, "max_output_tokens": 500},
+            )
+            resp = model_obj.generate_content(prompt)
+            raw = resp.text.strip()
+
+        # Extract JSON from response (handle code block wrappers)
+        raw = raw.strip("`").strip()
+        if raw.startswith("```json"):
+            raw = raw[7:-3].strip()
+        elif raw.startswith("```"):
+            raw = raw[3:-3].strip()
+
+        return json.loads(raw)
+
+    # Try primary provider first
+    try:
+        result = _call_llm(
+            primary_key,
+            os.getenv("GROQ_MODEL") if provider == "groq" else os.getenv("GEMINI_MODEL"),
+            provider,
+        )
+        result["source"] = provider
+        result["success"] = True
+        logger.info("LLM fit score (%s): %d", provider, result.get("score", 0))
+        return result
+    except Exception as exc:
+        logger.warning("Primary provider (%s) failed: %s", provider, exc)
+
+        # Try fallback
+        if fallback_key:
+            try:
+                result = _call_llm(
+                    fallback_key,
+                    os.getenv("GROQ_MODEL") if fallback_provider == "groq"
+                    else os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+                    fallback_provider,
+                )
+                result["source"] = fallback_provider
+                result["success"] = True
+                logger.info("LLM fit score (%s fallback): %d", fallback_provider, result.get("score", 0))
+                return result
+            except Exception as exc2:
+                logger.warning("Fallback provider (%s) failed: %s", fallback_provider, exc2)
+
+    # Rule-based fallback: use a deterministic estimate from the rule scores
+    logger.info("Both LLM providers unavailable, using rule-based fit estimate")
+    return {
+        "score": icp_total,
+        "rationale": (
+            f"LLM unavailable; using rule-based score of {icp_total}/100. "
+            f"Category: {icp_category}."
+        ),
+        "observed_signals": [],
+        "source": "fallback",
+        "success": False,
+    }
+
+
 def _rule_based_fallback(
     business_name: str,
     industry: str,
