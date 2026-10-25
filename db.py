@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS leads (
     linkedin_url TEXT,
     draft_email_body TEXT,
     linkedin_note TEXT,
+    gmail_draft_id TEXT,
     status TEXT DEFAULT 'new',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -143,6 +144,7 @@ def upsert_lead(
         "fit_score_llm", "fit_score_final", "fit_reason", "contact_name",
         "contact_title", "email", "email_confidence", "linkedin_url",
         "draft_email_body", "linkedin_note", "status", "created_at",
+        "gmail_draft_id",
     }
     insert_fields = {k: v for k, v in fields.items() if k in allowed}
     insert_fields["domain"] = domain
