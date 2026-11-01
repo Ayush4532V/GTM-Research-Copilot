@@ -60,7 +60,16 @@ def qualify_lead(
     from scoring import score_prospect
     from config import target_industries
 
-    icp_result = score_prospect(industry, website_title + " " + website_description, extracted_text)
+    # Handle None values for website_title and website_description
+    title_desc = ""
+    if website_title:
+        title_desc += website_title
+    if website_description:
+        if title_desc:
+            title_desc += " "
+        title_desc += website_description
+
+    icp_result = score_prospect(industry, title_desc, extracted_text)
     fit_score_rule = icp_result["total"]
     scores = icp_result["scores"]
     icp_category = icp_result["category"]

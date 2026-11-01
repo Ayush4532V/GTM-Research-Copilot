@@ -59,7 +59,7 @@ def generate_research_summary(
         On failure or missing API key, returns a rule-based fallback summary.
     """
     api_key = os.getenv("GROQ_API_KEY")
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model = os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
 
     # -------------------------------------------------------------------
     # Guard: if no API key, use the rule-based fallback immediately.

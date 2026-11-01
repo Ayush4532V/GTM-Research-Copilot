@@ -50,7 +50,7 @@ def generate_outreach_draft(
     signal_clean = observed_signal.strip()
     lowered = signal_clean.lower()
     if lowered.startswith("i noticed"):
-        signal_clean = signal_clean.split("i noticed", 1)[1].strip()
+        signal_clean = signal_clean[len("i noticed"):].strip()
     if len(signal_clean) > 80:
         signal_clean = signal_clean[:80].rstrip(" .,")
 
@@ -147,6 +147,7 @@ def draft_lead(
         upsert_lead(
             conn,
             domain=domain,
+            company=company_name,
             contact_name=contact_name or "",
             contact_title=contact_title or "",
             email=email or "",

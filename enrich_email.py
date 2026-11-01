@@ -237,6 +237,7 @@ def enrich_lead(
             upsert_lead(
                 conn,
                 domain=domain,
+                company=company_name,
                 email=selected_email,
                 email_confidence=confidence,
             )
